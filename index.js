@@ -2,9 +2,20 @@ const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
+const shortid = require('shortid');
 require('dotenv').config();
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const port = process.env.PORT || 5000;
+
+async function generateRandomValue() {
+  const randomValue = shortid.generate({ length: 6 });
+  const document = await collection.findOne({ value: randomValue });
+  if (document) {
+    return generateRandomValue();
+  } else {
+    return randomValue;
+  }
+}
 
 const app = express();
 app.use(cors());
@@ -57,16 +68,20 @@ async function run() {
 
     app.get('/users', async (req,res) => {
         let query = {};
-
         if(req.query.email){
             query = {
                 email: req.query.email
             }
         };
-
         const posts = await usersCollection.find(query).sort({_id:-1}).toArray();
         res.send(posts);
     })
+
+    app.post('/user', async (req, res) => {
+      const body = req.body;
+      const result = await usersCollection.insertOne(body);
+      res.send(result);
+    });
 
     app.post('/api/post', (req, res) => {
       upload(req, res, (err) => {
