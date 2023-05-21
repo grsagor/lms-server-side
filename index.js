@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
+const moment = require('moment-timezone');
 const path = require('path');
 const shortid = require('shortid');
 require('dotenv').config();
@@ -88,27 +89,75 @@ async function run() {
       const result = await usersCollection.insertOne(body);
       res.send(result);
     });
-
-    app.post('/api/post', (req, res) => {
-      upload(req, res, (err) => {
+    /*============================================================================================== 
+    Getting Post, Task & Quiz from database
+    ==============================================================================================*/
+    app.get('/posts',async(req,res)=> {
+      let query = {};
+      if(req.query.type){
+        query = {type:req.query.type}
+      };
+      const posts = await postCollection.find(query).toArray();
+      res.send(posts);
+    })
+    /*============================================================================================== 
+    Sending Post, Task & Quiz to database
+    ==============================================================================================*/
+    app.post('/post', async (req, res) => {
+      console.log("called");
+      upload(req, res, async (err) => {
         if (err) {
           console.log(err);
           res.status(400).json({ error: err });
         } else {
-          const db = client.db('LMS');
           const post = {
-            user_name: req.body.user_name,
-            post_content: req.body.post_content,
-            photos: req.files.map((file) => {
-              return { filename: file.filename };
-            })
+            email: req.body.email,
+            type: req.body.type,
+            created_at: moment().tz('Asia/Dhaka').format()
           };
+          if (req.body.post) {
+            post.post = req.body.post;
+          }
+          if (req.body.title) {
+            post.title = req.body.title;
+          }
+          if (req.body.description) {
+            post.description = req.body.description;
+          }
+          if (req.body.date) {
+            post.date = req.body.date;
+          }
+          if (req.body.time) {
+            post.time = req.body.time;
+          }
+          if (req.body.questions) {
+            post.questions = req.body.questions;
+          }
+          if (req.files) {
+            post.files = req.files.map((file) => {
+              return { filename: file.filename };
+            });
+          }
           const options = { w: "majority" };
-          postCollection.insertOne(post, options, (err, result) => {
-          });
+          const result = await postCollection.insertOne(post, options);
+          res.send(result);
         }
       });
     });
+
+    /*============================================================================================== 
+    Class Started
+    ==============================================================================================*/
+    app.get('/classes', async (req,res) => {
+      let query = {};
+      if(req.query.email){
+          query = {
+              email: req.query.email
+          }
+      };
+      const classes = await classCollection.find(query).toArray();
+      res.send(classes);
+  })
 
     app.post('/create-class', async (req, res) => {
       const body = req.body;
@@ -158,6 +207,10 @@ async function run() {
         res.send(resultUser);
 
   })
+
+  /*============================================================================================== 
+    Class Ended
+    ==============================================================================================*/
 
     app.get('/', (req,res) => {
         res.send('LMS is runninig');
