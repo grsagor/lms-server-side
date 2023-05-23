@@ -57,16 +57,20 @@ async function run() {
 
     app.get('/users', async (req,res) => {
         let query = {};
-
         if(req.query.email){
             query = {
                 email: req.query.email
             }
         };
-
         const posts = await usersCollection.find(query).sort({_id:-1}).toArray();
         res.send(posts);
     })
+
+    app.post('/user', async (req, res) => {
+      const body = req.body;
+      const result = await usersCollection.insertOne(body);
+      res.send(result);
+    });
 
     app.post('/api/post', (req, res) => {
       upload(req, res, (err) => {
