@@ -5,7 +5,7 @@ const moment = require('moment-timezone');
 const path = require('path');
 const shortid = require('shortid');
 require('dotenv').config();
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const port = process.env.PORT || 5000;
 
 const app = express();
@@ -72,7 +72,29 @@ async function run() {
         return randomValue;
       }
     }
+    /*============================================================================================== 
+    Getting data for a specific id
+    ==============================================================================================*/
+    app.get('/all',async(req,res)=>{
+      let postQuery = {};
+      let courseQuery = {};
+      if(req.query.id){
+        postQuery = {
+          courseID: req.query.id
+        }
+        courseQuery = {
+          _id: new ObjectId(req.query.id)
+        }
+    };
+      const posts = await postCollection.find(postQuery).toArray();
+      const courseDetails = await classCollection.find(courseQuery).toArray();
 
+      const all = {posts,courseDetails};
+      res.send(all)
+    })
+    /*============================================================================================== 
+    Getting users
+    ==============================================================================================*/
     app.get('/users', async (req,res) => {
         let query = {};
         if(req.query.email){
@@ -82,17 +104,6 @@ async function run() {
         };
         const posts = await usersCollection.find(query).sort({_id:-1}).toArray();
         res.send(posts);
-    })
-        /*============================================================================================== 
-    Getting data for home page
-    ==============================================================================================*/
-    app.get('/home', async(req,res)=>{
-      let postQuery = {};
-      let classQuery = {};
-      const posts = await postCollection.find(postQuery).toArray();
-      const classes = await classCollection.find(classQuery).toArray();
-      const result = {posts,classes};
-      res.send(result);
     })
     /*============================================================================================== 
     Saving Users in the database
@@ -126,7 +137,9 @@ async function run() {
           const post = {
             email: req.body.email,
             type: req.body.type,
-            created_at: moment().tz('Asia/Dhaka').format()
+            courseID: req.body.courseID,
+            creationDate: moment().tz('Asia/Dhaka').format('YYYY-MM-DD'),
+            creationTime: moment().tz('Asia/Dhaka').format('h:mm A'),
           };
           if (req.body.post) {
             post.post = req.body.post;
@@ -141,7 +154,7 @@ async function run() {
             post.date = req.body.date;
           }
           if (req.body.time) {
-            post.time = req.body.time;
+            post.time = moment(req.body.time, 'HH:mm').format('h:mm A');
           }
           if (req.body.questions) {
             post.questions = req.body.questions;
@@ -163,9 +176,9 @@ async function run() {
     ==============================================================================================*/
     app.get('/classes', async (req,res) => {
       let query = {};
-      if(req.query.email){
+      if(req.query.id){
           query = {
-              email: req.query.email
+              _id: new ObjectId(req.query.id)
           }
       };
       const classes = await classCollection.find(query).toArray();
