@@ -83,7 +83,20 @@ async function run() {
         const posts = await usersCollection.find(query).sort({_id:-1}).toArray();
         res.send(posts);
     })
-
+        /*============================================================================================== 
+    Getting data for home page
+    ==============================================================================================*/
+    app.get('/home', async(req,res)=>{
+      let postQuery = {};
+      let classQuery = {};
+      const posts = await postCollection.find(postQuery).toArray();
+      const classes = await classCollection.find(classQuery).toArray();
+      const result = {posts,classes};
+      res.send(result);
+    })
+    /*============================================================================================== 
+    Saving Users in the database
+    ==============================================================================================*/
     app.post('/user', async (req, res) => {
       const body = req.body;
       const result = await usersCollection.insertOne(body);
