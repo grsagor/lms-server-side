@@ -43,7 +43,6 @@ function checkFileType(file, cb) {
 }
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.7le8ogp.mongodb.net/?retryWrites=true&w=majority`;
-console.log(uri);
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -60,11 +59,11 @@ async function run() {
 
     async function generateRandomValue() {
       const characters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
-      const randomValue9 = shortid.generate({ 
+      const randomValue9 = shortid.generate({
         length: 6,
         characters: characters
       });
-      const randomValue = randomValue9.slice(0,6);
+      const randomValue = randomValue9.slice(0, 6);
       const document = await classCollection.findOne({ code: randomValue });
       if (document) {
         return generateRandomValue();
@@ -75,35 +74,40 @@ async function run() {
     /*============================================================================================== 
     Getting data for a specific id
     ==============================================================================================*/
-    app.get('/all',async(req,res)=>{
+    app.get('/all', async (req, res) => {
       let postQuery = {};
       let courseQuery = {};
-      if(req.query.id){
+      if (req.query.id) {
         postQuery = {
           courseID: req.query.id
         }
         courseQuery = {
           _id: new ObjectId(req.query.id)
         }
-    };
+      };
       const posts = await postCollection.find(postQuery).toArray();
       const courseDetails = await classCollection.find(courseQuery).toArray();
 
-      const all = {posts,courseDetails};
+      const all = { posts, courseDetails };
       res.send(all)
     })
     /*============================================================================================== 
     Getting users
     ==============================================================================================*/
-    app.get('/users', async (req,res) => {
-        let query = {};
-        if(req.query.email){
-            query = {
-                email: req.query.email
-            }
-        };
-        const posts = await usersCollection.find(query).sort({_id:-1}).toArray();
-        res.send(posts);
+    app.get('/users', async (req, res) => {
+      let query = {};
+      if (req.query.email) {
+        query = {
+          email: req.query.email
+        }
+      };
+      const users = await usersCollection.find(query).sort({ _id: -1 }).toArray();
+      const classes = await classCollection.find().toArray();
+      users.map(user => {
+        user.classInfo = user.classes.map(clsid => classes.find(cls => cls._id.toString() === clsid.toString()));
+        return user;
+      });
+      res.send(users);
     })
     /*============================================================================================== 
     Saving Users in the database
@@ -116,10 +120,10 @@ async function run() {
     /*============================================================================================== 
     Getting Post, Task & Quiz from database
     ==============================================================================================*/
-    app.get('/posts',async(req,res)=> {
+    app.get('/posts', async (req, res) => {
       let query = {};
-      if(req.query.type){
-        query = {type:req.query.type}
+      if (req.query.type) {
+        query = { type: req.query.type }
       };
       const posts = await postCollection.find(query).toArray();
       res.send(posts);
@@ -174,72 +178,77 @@ async function run() {
     /*============================================================================================== 
     Class Started
     ==============================================================================================*/
-    app.get('/classes', async (req,res) => {
+    app.get('/classes', async (req, res) => {
       let query = {};
-      if(req.query.id){
-          query = {
-              _id: new ObjectId(req.query.id)
-          }
+      if (req.query.id) {
+        query = {
+          _id: new ObjectId(req.query.id)
+        }
       };
       const classes = await classCollection.find(query).toArray();
+      const posts = await postCollection.find().toArray();
+      classes.map(cls=>{
+        cls.posts = posts.filter(post=> post.courseID.toString() === cls._id.toString())
+        return cls;
+      })
       res.send(classes);
-  })
+    })
 
     app.post('/create-class', async (req, res) => {
       const body = req.body;
-      const options = {upsert: true};
+      const options = { upsert: true };
 
       body.code = await generateRandomValue();
       const result = await classCollection.insertOne(body);
 
       const document = await classCollection.findOne({ code: body.code });
       const email = body?.teacher;
-      const filterUser = {email: email};
+      const filterUser = { email: email };
       const documentUser = await usersCollection.findOne(filterUser);
-      const updateDoc ={
-          $set:{
-            classes: [document?._id,...documentUser?.classes]
-          }
+      const updateDoc = {
+        $set: {
+          classes: [document?._id, ...documentUser?.classes]
+        }
       }
       const resultUser = await usersCollection.updateOne(filterUser, updateDoc, options);
       res.send(resultUser);
     });
 
-    app.put('/join-class', async(req, res)=> {
+    app.put('/join-class', async (req, res) => {
       const body = req.body;
-      const options = {upsert: true};
+      const options = { upsert: true };
       const code = body.code;
 
-      const filter = {code: code};
+      const filter = { code: code };
       const document = await classCollection.findOne({ code: code });
       console.log(document);
-      const updateDocClass ={
-          $set:{
-            students: [body?.email,...document?.students]
-          }
+      const updateDocClass = {
+        $set: {
+          students: [body?.email, ...document?.students]
+        }
       }
       const result = await classCollection.updateOne(filter, updateDocClass, options);
 
       const email = body?.email;
-      const filterUser = {email: email};
+      const filterUser = { email: email };
       const documentUser = await usersCollection.findOne(filterUser);
-      const updateDoc ={
-          $set:{
-            classes: [document?._id,...documentUser?.classes]
-          }
+      const updateDoc = {
+        $set: {
+          classes: [document?._id, ...documentUser?.classes]
+        }
       }
       const resultUser = await usersCollection.updateOne(filterUser, updateDoc, options);
 
-        res.send(resultUser);
+      res.send(resultUser);
 
-  })
+    })
 
-  /*============================================================================================== 
-    Class Ended
-    ==============================================================================================*/
+    /*============================================================================================== 
+      Class Ended
+      ==============================================================================================*/
 
-    app.get('/', (req,res) => {
-        res.send('LMS is runninig');
+    app.get('/', (req, res) => {
+      res.send('LMS is runninig');
     });
   } finally {
 
@@ -248,5 +257,5 @@ async function run() {
 run().catch(console.dir);
 
 app.listen(port, () => {
-    console.log(`LMS is running on port: ${port}`);
+  console.log(`LMS is running on port: ${port}`);
 });
