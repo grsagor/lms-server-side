@@ -103,10 +103,12 @@ async function run() {
       };
       const users = await usersCollection.find(query).sort({ _id: -1 }).toArray();
       const classes = await classCollection.find().toArray();
-      users.map(user => {
-        user.classInfo = user.classes.map(clsid => classes.find(cls => cls._id.toString() === clsid.toString()));
-        return user;
-      });
+      if(req.query.email){
+        users.map(user => {
+          user.classInfo = user.classes.map(clsid => classes.find(cls => cls._id.toString() === clsid.toString()));
+          return user;
+        });
+      }
       res.send(users);
     })
     /*============================================================================================== 
