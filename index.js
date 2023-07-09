@@ -103,12 +103,14 @@ async function run() {
       };
       const users = await usersCollection.find(query).sort({ _id: -1 }).toArray();
       const classes = await classCollection.find().toArray();
-      if(req.query.email){
+      const posts = await postCollection.find().toArray();
+      // if(req.query.email){
         users.map(user => {
           user.classInfo = user.classes.map(clsid => classes.find(cls => cls._id.toString() === clsid.toString()));
+          user.posts = user.classes.map(clsid => posts.filter(post => post.courseID === clsid.toString()));
           return user;
         });
-      }
+      // }
       res.send(users);
     })
     /*============================================================================================== 
@@ -130,6 +132,17 @@ async function run() {
       const posts = await postCollection.find(query).toArray();
       res.send(posts);
     })
+    /*============================================================================================== 
+    Getting Post, Task & Quiz from database for a specifiq users
+    ==============================================================================================*/
+    // app.get('/user-posts', async (req, res) => {
+    //   let query = {};
+    //   if(req.query.userID){
+    //     _id: new ObjectId(req.query.id)
+    //   }
+    //   const id = req.query.userID;
+    //   const user = usersCollection.
+    // })
     /*============================================================================================== 
     Sending Post, Task & Quiz to database
     ==============================================================================================*/
