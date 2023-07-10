@@ -56,6 +56,7 @@ async function run() {
     const usersCollection = client.db('LMS').collection('users');
     const postCollection = client.db('LMS').collection('posts');
     const classCollection = client.db('LMS').collection('classes');
+    const assignmentCollection = client.db('LMS').collection('assignments');
 
     async function generateRandomValue() {
       const characters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
@@ -103,12 +104,14 @@ async function run() {
       };
       const users = await usersCollection.find(query).sort({ _id: -1 }).toArray();
       const classes = await classCollection.find().toArray();
-      if(req.query.email){
+      const posts = await postCollection.find().toArray();
+      // if(req.query.email){
         users.map(user => {
           user.classInfo = user.classes.map(clsid => classes.find(cls => cls._id.toString() === clsid.toString()));
+          user.posts = user.classes.map(clsid => posts.filter(post => post.courseID === clsid.toString()));
           return user;
         });
-      }
+      // }
       res.send(users);
     })
     /*============================================================================================== 
@@ -127,9 +130,25 @@ async function run() {
       if (req.query.type) {
         query = { type: req.query.type }
       };
+      if(req.query.id){
+        query = {
+          _id: new ObjectId(req.query.id)
+        }
+      }
       const posts = await postCollection.find(query).toArray();
       res.send(posts);
     })
+    /*============================================================================================== 
+    Getting Post, Task & Quiz from database for a specifiq users
+    ==============================================================================================*/
+    // app.get('/user-posts', async (req, res) => {
+    //   let query = {};
+    //   if(req.query.userID){
+    //     _id: new ObjectId(req.query.id)
+    //   }
+    //   const id = req.query.userID;
+    //   const user = usersCollection.
+    // })
     /*============================================================================================== 
     Sending Post, Task & Quiz to database
     ==============================================================================================*/
@@ -172,6 +191,30 @@ async function run() {
           }
           const options = { w: "majority" };
           const result = await postCollection.insertOne(post, options);
+          res.send(result);
+        }
+      });
+    });
+    app.post('/submittask', async (req, res) => {
+      console.log("called");
+      upload(req, res, async (err) => {
+        if (err) {
+          console.log(err);
+          res.status(400).json({ error: err });
+        } else {
+          const post = {
+            studentEmail: req.body.studentEmail,
+            courseID: req.body.courseID,
+            creationDate: moment().tz('Asia/Dhaka').format('YYYY-MM-DD'),
+            creationTime: moment().tz('Asia/Dhaka').format('h:mm A'),
+          };
+          if (req.files) {
+            post.files = req.files.map((file) => {
+              return { filename: file.filename };
+            });
+          }
+          const options = { w: "majority" };
+          const result = await assignmentCollection.insertOne(post, options);
           res.send(result);
         }
       });
