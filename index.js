@@ -8,6 +8,10 @@ require('dotenv').config();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const port = process.env.PORT || 5000;
 
+// Importing route file here
+const getAssignments = require('./functions/getAssignments');
+const getClasses = require('./functions/getClasses');
+
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -51,12 +55,17 @@ const client = new MongoClient(uri, {
   }
 });
 
+let usersCollection;
+let postCollection;
+let classCollection;
+let assignmentCollection;
+
 async function run() {
   try {
-    const usersCollection = client.db('LMS').collection('users');
-    const postCollection = client.db('LMS').collection('posts');
-    const classCollection = client.db('LMS').collection('classes');
-    const assignmentCollection = client.db('LMS').collection('assignments');
+    usersCollection = client.db('LMS').collection('users');
+    postCollection = client.db('LMS').collection('posts');
+    classCollection = client.db('LMS').collection('classes');
+    assignmentCollection = client.db('LMS').collection('assignments');
 
     async function generateRandomValue() {
       const characters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
@@ -205,6 +214,7 @@ async function run() {
           const post = {
             studentEmail: req.body.studentEmail,
             courseID: req.body.courseID,
+            postID: req.body.postID,
             creationDate: moment().tz('Asia/Dhaka').format('YYYY-MM-DD'),
             creationTime: moment().tz('Asia/Dhaka').format('h:mm A'),
           };
@@ -219,24 +229,15 @@ async function run() {
         }
       });
     });
+    app.get('/assignments', (req, res) => {
+      getAssignments.getAssignments(req, res, assignmentCollection);
+    });
 
     /*============================================================================================== 
     Class Started
     ==============================================================================================*/
     app.get('/classes', async (req, res) => {
-      let query = {};
-      if (req.query.id) {
-        query = {
-          _id: new ObjectId(req.query.id)
-        }
-      };
-      const classes = await classCollection.find(query).toArray();
-      const posts = await postCollection.find().toArray();
-      classes.map(cls=>{
-        cls.posts = posts.filter(post=> post.courseID.toString() === cls._id.toString())
-        return cls;
-      })
-      res.send(classes);
+      getClasses.getClasses(req,res,classCollection,postCollection)
     })
 
     app.post('/create-class', async (req, res) => {
